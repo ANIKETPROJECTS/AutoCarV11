@@ -497,23 +497,125 @@ export default function CustomerRegistration() {
     registerVehicle.mutate(data);
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxSizeMB: number = 2): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          const maxWidth = 1920;
+          const maxHeight = 1920;
+          
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = (height / width) * maxWidth;
+              width = maxWidth;
+            } else {
+              width = (width / height) * maxHeight;
+              height = maxHeight;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          let quality = 0.9;
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          
+          const targetSizeBytes = maxSizeMB * 1024 * 1024;
+          while (compressedDataUrl.length * 0.75 > targetSizeBytes && quality > 0.1) {
+            quality -= 0.1;
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+          
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        vehicleForm.setValue("vehiclePhoto", reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        if (!file.type.startsWith('image/')) {
+          toast({
+            title: "Invalid File",
+            description: "Please upload an image file",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Processing Image",
+          description: "Compressing and optimizing your image...",
+        });
+        
+        const compressedImage = await compressImage(file, 2);
+        vehicleForm.setValue("vehiclePhoto", compressedImage);
+        
+        toast({
+          title: "Image Uploaded",
+          description: "Vehicle photo has been uploaded successfully",
+        });
+      } catch (error) {
+        console.error('Image compression error:', error);
+        toast({
+          title: "Upload Failed",
+          description: "Failed to process image. Please try a different image.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleWarrantyCardUpload = (partId: string, partName: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWarrantyCardUpload = (partId: string, partName: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const fileData = reader.result as string;
+      try {
+        let fileData: string;
+        const fileType = file.type.includes('pdf') ? 'PDF' : 'Image';
+        
+        toast({
+          title: "Processing File",
+          description: `Processing ${fileType.toLowerCase()} for ${partName}...`,
+        });
+        
+        if (file.type.startsWith('image/')) {
+          fileData = await compressImage(file, 5);
+        } else if (file.type === 'application/pdf') {
+          const reader = new FileReader();
+          fileData = await new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('Failed to read PDF'));
+            reader.readAsDataURL(file);
+          });
+        } else {
+          toast({
+            title: "Invalid File",
+            description: "Please upload an image or PDF file",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         const currentWarrantyCards = vehicleForm.getValues("warrantyCards") || [];
         const existingIndex = currentWarrantyCards.findIndex(wc => wc.partId === partId);
         
@@ -525,13 +627,18 @@ export default function CustomerRegistration() {
           vehicleForm.setValue("warrantyCards", [...currentWarrantyCards, { partId, partName, fileData }]);
         }
         
-        const fileType = file.type.includes('pdf') ? 'PDF' : 'Image';
         toast({
           title: "Warranty Card Uploaded",
           description: `${fileType} warranty card for ${partName} has been uploaded successfully.`,
         });
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Warranty card upload error:', error);
+        toast({
+          title: "Upload Failed",
+          description: "Failed to process warranty card. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
