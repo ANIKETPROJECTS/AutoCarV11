@@ -125,7 +125,7 @@ function CustomerVehicleCard({
   totalVehicles,
   isAdmin, 
   onEdit, 
-  onDelete,
+  onDeleteVehicle,
   onViewDetails 
 }: { 
   customer: Customer; 
@@ -133,7 +133,7 @@ function CustomerVehicleCard({
   totalVehicles: number;
   isAdmin: boolean; 
   onEdit: (customer: Customer) => void;
-  onDelete: (customerId: string) => void;
+  onDeleteVehicle: (vehicleId: string, isLastVehicle: boolean) => void;
   onViewDetails: (customer: Customer) => void;
 }) {
   const { data: productsData, isLoading: loadingProducts } = useQuery<{ 
@@ -270,25 +270,40 @@ function CustomerVehicleCard({
                     <Button
                       variant="outline"
                       size="sm"
-                      data-testid={`button-delete-${customer.id}`}
+                      data-testid={`button-delete-${customer.id}-${vehicle.id}`}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete Vehicle?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the customer "{customer.fullName}" and all associated vehicles. This action cannot be undone.
+                        {totalVehicles === 1 ? (
+                          <>
+                            This will permanently delete the vehicle <strong>{vehicle.vehicleNumber}</strong> ({vehicle.vehicleBrand} {vehicle.vehicleModel}).
+                            <br /><br />
+                            <strong className="text-destructive">Warning:</strong> This is the only vehicle for customer "{customer.fullName}". 
+                            The customer record will remain in the system.
+                          </>
+                        ) : (
+                          <>
+                            This will permanently delete the vehicle <strong>{vehicle.vehicleNumber}</strong> ({vehicle.vehicleBrand} {vehicle.vehicleModel}).
+                            <br /><br />
+                            Customer "{customer.fullName}" has {totalVehicles - 1} other vehicle(s) that will not be affected.
+                          </>
+                        )}
+                        <br /><br />
+                        This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => onDelete(customer.id)}
+                        onClick={() => onDeleteVehicle(vehicle.id, totalVehicles === 1)}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        Delete
+                        Delete Vehicle
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -535,6 +550,28 @@ export default function CustomerRegistrationDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete customer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete vehicle mutation
+  const deleteVehicleMutation = useMutation({
+    mutationFn: async (vehicleId: string) => {
+      return apiRequest("DELETE", `/api/registration/vehicles/${vehicleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/registration/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/registration/vehicles"] });
+      toast({
+        title: "Success",
+        description: "Vehicle deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete vehicle",
         variant: "destructive",
       });
     },
@@ -941,7 +978,7 @@ export default function CustomerRegistrationDashboard() {
                     setEditingCustomer(customer);
                     setEditDialogOpen(true);
                   }}
-                  onDelete={(customerId) => deleteMutation.mutate(customerId)}
+                  onDeleteVehicle={(vehicleId) => deleteVehicleMutation.mutate(vehicleId)}
                   onViewDetails={(customer) => setSelectedCustomer(customer)}
                 />
               ));
