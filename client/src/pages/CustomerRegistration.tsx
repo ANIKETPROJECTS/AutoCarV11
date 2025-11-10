@@ -47,7 +47,7 @@ const customerFormSchema = z.object({
   fullName: z.string().min(1, "Name is required"),
   mobileNumber: z.string().min(10, "Mobile number must be at least 10 digits"),
   alternativeNumber: z.string().optional(),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   address: z.string().min(1, "Address is required"),
   city: z.string().min(1, "City is required"),
   taluka: z.string().min(1, "Taluka is required"),
@@ -56,6 +56,7 @@ const customerFormSchema = z.object({
   pinCode: z.string().min(6, "Pin code must be 6 digits"),
   referralSource: z.string().optional(),
   customReferralSource: z.string().optional(),
+  referralPersonName: z.string().optional(),
 }).refine((data) => {
   if (data.referralSource === "Other" && !data.customReferralSource) {
     return false;
@@ -64,6 +65,14 @@ const customerFormSchema = z.object({
 }, {
   message: "Please specify where you heard about us",
   path: ["customReferralSource"],
+}).refine((data) => {
+  if (data.referralSource === "Friend/Family Referral" && !data.referralPersonName) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please enter the name of the person who referred you",
+  path: ["referralPersonName"],
 });
 
 // Warranty card schema
@@ -154,6 +163,7 @@ export default function CustomerRegistration() {
       pinCode: "",
       referralSource: "",
       customReferralSource: "",
+      referralPersonName: "",
     },
   });
 
@@ -804,9 +814,9 @@ export default function CustomerRegistration() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Address *</FormLabel>
+                          <FormLabel>Email Address</FormLabel>
                           <FormControl>
-                            <Input {...field} type="email" placeholder="your@email.com" data-testid="input-email" />
+                            <Input {...field} type="email" placeholder="your@email.com (optional)" data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -847,6 +857,22 @@ export default function CustomerRegistration() {
                             <FormLabel>Please specify *</FormLabel>
                             <FormControl>
                               <Input {...field} placeholder="Where did you hear about us?" data-testid="input-custom-referral" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {customerForm.watch("referralSource") === "Friend/Family Referral" && (
+                      <FormField
+                        control={customerForm.control}
+                        name="referralPersonName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Name of the person *</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter the person's name" data-testid="input-referral-person-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
