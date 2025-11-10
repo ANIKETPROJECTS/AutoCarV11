@@ -71,11 +71,12 @@ export default function Invoices() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'UPI' | 'Cash' | 'Card' | 'Net Banking' | 'Cheque'>('Cash');
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
-    queryKey: ['/api/invoices', statusFilter, paymentFilter],
+    queryKey: ['/api/invoices', statusFilter, paymentFilter, searchQuery],
     queryFn: () => {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (paymentFilter !== 'all') params.append('paymentStatus', paymentFilter);
+      if (searchQuery) params.append('search', searchQuery);
       return fetch(`/api/invoices?${params}`).then(res => res.json());
     },
   });
@@ -258,12 +259,8 @@ export default function Invoices() {
     return <Badge variant={config.variant} data-testid={`badge-payment-${paymentStatus}`}>{config.label}</Badge>;
   };
 
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.customerId?.fullName?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  // Search is now handled by the backend, so we just use the invoices directly
+  const filteredInvoices = invoices;
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
