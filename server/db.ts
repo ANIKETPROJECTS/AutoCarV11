@@ -3,7 +3,18 @@ dotenv.config();
 
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
+let MONGODB_URI = process.env.MONGODB_URI?.trim();
+
+if (MONGODB_URI?.includes('=')) {
+  const parts = MONGODB_URI.split('=');
+  if (parts[0]?.trim() === 'MONGODB_URI') {
+    const fullValue = parts.slice(1).join('=').trim();
+    const whatsappIndex = fullValue.indexOf('WHATSAPP_API_KEY');
+    MONGODB_URI = whatsappIndex > 0 
+      ? fullValue.substring(0, whatsappIndex).trim()
+      : fullValue;
+  }
+}
 
 if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');

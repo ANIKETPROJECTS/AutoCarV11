@@ -6,8 +6,18 @@ interface WhatsAppResponse {
   error?: string;
 }
 
-const WHATSAPP_API_KEY = process.env.WHATSAPP_API_KEY;
-const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '919970127778';
+function parseEnvValue(envKey: string): string | undefined {
+  const rawValue = process.env[envKey]?.trim() || process.env.MONGODB_URI?.trim();
+  if (!rawValue) return undefined;
+  
+  const keyPattern = new RegExp(`${envKey}\\s*=\\s*([^\\s]+)`);
+  const match = rawValue.match(keyPattern);
+  return match ? match[1].trim() : (envKey === process.env[envKey] ? undefined : rawValue);
+}
+
+let WHATSAPP_API_KEY = parseEnvValue('WHATSAPP_API_KEY');
+let WHATSAPP_PHONE_NUMBER_ID = parseEnvValue('WHATSAPP_PHONE_NUMBER_ID') || '919970127778';
+
 const WHATSAPP_BASE_URL = 'https://cloudapi.akst.in/api/v1.0/messages';
 
 const MAX_RETRIES = 3;
