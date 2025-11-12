@@ -4589,6 +4589,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Build vehicle details array with only the service vehicle
+      // Extract partIds from selectedParts (which may be objects with {partId, quantity} or strings)
+      const normalizedParts = normalizeSelectedParts(serviceVehicle.selectedParts);
+      const partIds = normalizedParts.map(p => p.partId);
+      
       const vehicleDetails = [{
         vehicleId: serviceVehicle.vehicleId,
         vehicleNumber: serviceVehicle.vehicleNumber,
@@ -4601,7 +4605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vehiclePhoto: serviceVehicle.vehiclePhoto,
         isNewVehicle: serviceVehicle.isNewVehicle,
         chassisNumber: serviceVehicle.chassisNumber,
-        selectedParts: serviceVehicle.selectedParts,
+        selectedParts: partIds,
         vehicleRegistrationDate: serviceVehicle.createdAt,
       }];
       
