@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { CheckCircle2, Car, User, MapPin, UploadCloud, PlusCircle } from "lucide-react";
+import { CheckCircle2, Car, User, MapPin, UploadCloud, PlusCircle, Search } from "lucide-react";
 import { getAllBrandNames, getModelsByBrand, getPartsByBrandAndModel } from "@shared/vehicleData";
 import { ScreenshotProtection } from "@/components/ScreenshotProtection";
 
@@ -162,6 +162,7 @@ export default function CustomerRegistration() {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [availableParts, setAvailableParts] = useState<any[]>([]);
+  const [partSearchTerm, setPartSearchTerm] = useState<string>("");
 
   const customerForm = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
@@ -1359,8 +1360,31 @@ export default function CustomerRegistration() {
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             {/* Products Grid - Left Side */}
                             <div className="lg:col-span-2">
+                              {/* Search Bar */}
+                              <div className="mb-3">
+                                <div className="relative">
+                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    type="text"
+                                    placeholder="Search parts by name or category..."
+                                    value={partSearchTerm}
+                                    onChange={(e) => setPartSearchTerm(e.target.value)}
+                                    className="pl-10"
+                                    data-testid="input-search-parts"
+                                  />
+                                </div>
+                              </div>
                               <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto border rounded-lg p-3 bg-muted/20">
-                                {availableParts.map((part) => {
+                                {availableParts
+                                  .filter((part) => {
+                                    if (!partSearchTerm) return true;
+                                    const searchLower = partSearchTerm.toLowerCase();
+                                    return (
+                                      part.name.toLowerCase().includes(searchLower) ||
+                                      part.category.toLowerCase().includes(searchLower)
+                                    );
+                                  })
+                                  .map((part) => {
                                   const quantity = getPartQuantity(part.id);
                                   
                                   return (

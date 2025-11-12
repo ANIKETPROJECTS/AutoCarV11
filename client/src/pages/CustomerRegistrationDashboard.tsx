@@ -87,7 +87,7 @@ interface Vehicle {
   vehiclePhoto: string;
   isNewVehicle: boolean;
   chassisNumber?: string | null;
-  selectedParts: string[];
+  selectedParts: Array<{ partId: string; quantity: number }>;
   warrantyCard?: string | null;
   warrantyCards?: Array<{
     partId: string;
@@ -147,10 +147,11 @@ function CustomerVehicleCard({
     }>;
     notFound: string[];
   }>({
-    queryKey: ['/api/products/resolve-by-ids', JSON.stringify(vehicle.selectedParts || [])],
+    queryKey: ['/api/products/resolve-by-ids', JSON.stringify(vehicle.selectedParts?.map(p => p.partId) || [])],
     enabled: !!(vehicle.selectedParts && vehicle.selectedParts.length > 0),
     queryFn: async () => {
-      const response = await apiRequest('POST', '/api/products/resolve-by-ids', { productIds: vehicle.selectedParts });
+      const productIds = vehicle.selectedParts.map(p => p.partId);
+      const response = await apiRequest('POST', '/api/products/resolve-by-ids', { productIds });
       return response.json();
     }
   });
@@ -384,7 +385,9 @@ export default function CustomerRegistrationDashboard() {
   });
 
   // Fetch products for customer vehicles
-  const allCustomerVehiclePartIds = customerVehicles.flatMap(v => v.selectedParts || []);
+  const allCustomerVehiclePartIds = customerVehicles.flatMap(v => 
+    (v.selectedParts || []).map(part => part.partId)
+  );
   const { data: customerVehicleProductsData, isLoading: loadingProducts } = useQuery<{
     products: Array<{
       id: string;
@@ -1163,10 +1166,10 @@ export default function CustomerRegistrationDashboard() {
                                     </div>
                                   ) : (
                                     <div className="space-y-2 mt-2">
-                                      {vehicle.selectedParts.map((partId, index) => {
-                                        const warrantyCard = vehicle.warrantyCards?.find(wc => wc.partId === partId);
-                                        const productInfo = productMap.get(partId);
-                                        const partName = warrantyCard?.partName || productInfo?.name || partId;
+                                      {vehicle.selectedParts.map((part, index) => {
+                                        const warrantyCard = vehicle.warrantyCards?.find(wc => wc.partId === part.partId);
+                                        const productInfo = productMap.get(part.partId);
+                                        const partName = warrantyCard?.partName || productInfo?.name || part.partId;
                                         const hasWarranty = !!warrantyCard;
                                         
                                         return (
@@ -1177,7 +1180,9 @@ export default function CustomerRegistrationDashboard() {
                                         >
                                           <div className="flex items-center gap-2">
                                             <span className="font-medium text-sm">{partName}</span>
-                                            <span className="text-xs">-</span>
+                                            <Badge variant="outline" className="text-xs">
+                                              Qty: {part.quantity}
+                                            </Badge>
                                             <Badge 
                                               variant={hasWarranty ? "default" : "secondary"}
                                               className={hasWarranty ? "bg-green-600 dark:bg-green-700" : ""}
