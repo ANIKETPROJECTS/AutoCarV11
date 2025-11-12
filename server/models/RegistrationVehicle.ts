@@ -13,7 +13,13 @@ const registrationVehicleSchema = new mongoose.Schema({
   vehiclePhoto: { type: String, required: true },
   isNewVehicle: { type: Boolean, default: false },
   chassisNumber: { type: String, default: null },
-  selectedParts: { type: [String], default: [] },
+  selectedParts: {
+    type: [{
+      partId: { type: String, required: true },
+      quantity: { type: Number, required: true, min: 1, default: 1 }
+    }],
+    default: []
+  },
   warrantyCards: { 
     type: [{
       partId: { type: String, required: true },

@@ -20,6 +20,11 @@ const warrantyCardSchema = z.object({
   fileData: z.string(),
 });
 
+const selectedPartSchema = z.object({
+  partId: z.string(),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+});
+
 export const insertVehicleSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
   vehicleNumber: z.string().optional(),
@@ -32,7 +37,7 @@ export const insertVehicleSchema = z.object({
   vehiclePhoto: z.string().min(1, "Vehicle photo is required"),
   isNewVehicle: z.boolean().optional(),
   chassisNumber: z.string().optional(),
-  selectedParts: z.array(z.string()).optional(),
+  selectedParts: z.array(selectedPartSchema).optional(),
   warrantyCards: z.array(warrantyCardSchema).optional(),
 });
 

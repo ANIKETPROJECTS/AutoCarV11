@@ -34,6 +34,35 @@ import { generateInvoicePDF } from "./utils/generateInvoicePDF";
 import { sendWhatsAppOTP, sendWhatsAppWelcome } from "./services/whatsapp";
 import { generateDailyReportData, formatDailyReportHTML, sendDailyReportEmail } from "./utils/emailReports";
 
+// Helper function to normalize selectedParts to ensure consistent format
+function normalizeSelectedParts(selectedParts: any): Array<{ partId: string; quantity: number }> {
+  if (!selectedParts || !Array.isArray(selectedParts)) {
+    return [];
+  }
+  
+  return selectedParts
+    .filter(part => part) // Remove falsy values
+    .map(part => {
+      // If it's already in the new format {partId, quantity}
+      if (typeof part === 'object' && part.partId) {
+        return {
+          partId: part.partId,
+          quantity: part.quantity || 1
+        };
+      }
+      // If it's in the old format (string)
+      if (typeof part === 'string') {
+        return {
+          partId: part,
+          quantity: 1
+        };
+      }
+      // Invalid format, skip
+      return null;
+    })
+    .filter((part): part is { partId: string; quantity: number } => part !== null);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   await connectDB();
   
@@ -95,6 +124,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   } catch (error) {
     console.error('❌ Warranty card migration error:', error);
+  }
+
+  // Auto-migrate: Convert old selectedParts string arrays to {partId, quantity} objects
+  try {
+    const vehiclesWithOldParts = await RegistrationVehicle.find({
+      selectedParts: { $exists: true, $type: 'array', $ne: [] }
+    }).lean();
+    
+    let migrated = 0;
+    for (const vehicle of vehiclesWithOldParts) {
+      // Check if selectedParts contains strings (old format)
+      if (vehicle.selectedParts && vehicle.selectedParts.length > 0) {
+        const firstPart = vehicle.selectedParts[0];
+        if (typeof firstPart === 'string') {
+          const normalized = normalizeSelectedParts(vehicle.selectedParts);
+          await RegistrationVehicle.updateOne(
+            { _id: vehicle._id },
+            { $set: { selectedParts: normalized } }
+          );
+          migrated++;
+        }
+      }
+    }
+    
+    if (migrated > 0) {
+      console.log(`✅ Migration complete: Converted selectedParts for ${migrated} vehicles to {partId, quantity} format`);
+    }
+  } catch (error) {
+    console.error('❌ selectedParts migration error:', error);
   }
   
   app.use(attachUser);
@@ -3755,6 +3813,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add vehicle to customer
   app.post("/api/registration/vehicles", async (req, res) => {
     try {
+      // Normalize selectedParts to handle both old (string[]) and new ({partId, quantity}[]) formats
+      if (req.body.selectedParts) {
+        req.body.selectedParts = normalizeSelectedParts(req.body.selectedParts);
+      }
+      
       const validatedData = insertVehicleSchema.parse(req.body);
       
       // Check if customer exists

@@ -82,6 +82,12 @@ const warrantyCardSchema = z.object({
   fileData: z.string(),
 });
 
+// Selected part with quantity schema
+const selectedPartSchema = z.object({
+  partId: z.string(),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+});
+
 // Vehicle form schema
 const vehicleFormSchema = z.object({
   vehicleNumber: z.string().optional(),
@@ -96,7 +102,7 @@ const vehicleFormSchema = z.object({
   vehiclePhoto: z.string().min(1, "Vehicle photo is required"),
   isNewVehicle: z.string().min(1, "Please select vehicle condition"),
   chassisNumber: z.string().optional(),
-  selectedParts: z.array(z.string()).default([]),
+  selectedParts: z.array(selectedPartSchema).default([]),
   warrantyCards: z.array(warrantyCardSchema).default([]),
 }).refine((data) => {
   if (data.isNewVehicle === "true" && !data.chassisNumber) {
@@ -152,11 +158,9 @@ export default function CustomerRegistration() {
   const [customerData, setCustomerData] = useState<any>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [registeredVehicles, setRegisteredVehicles] = useState<any[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<string>("Other");
-  const [selectedModel, setSelectedModel] = useState<string>("Other");
-  const [availableModels, setAvailableModels] = useState<string[]>(
-    getModelsByBrand("Other").map(m => m.name)
-  );
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [availableParts, setAvailableParts] = useState<any[]>([]);
 
   const customerForm = useForm<CustomerFormData>({
@@ -182,12 +186,12 @@ export default function CustomerRegistration() {
     resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
       vehicleNumber: "",
-      vehicleBrand: "Other",
+      vehicleBrand: "",
       customBrand: "",
-      vehicleModel: "Other",
+      vehicleModel: "",
       customModel: "",
       variant: undefined,
-      color: "Others",
+      color: "",
       customColor: "",
       yearOfPurchase: "",
       vehiclePhoto: "",
@@ -200,6 +204,43 @@ export default function CustomerRegistration() {
 
   // Watch custom model input for compatibility matching
   const customModelValue = vehicleForm.watch("customModel");
+
+  // Helper functions for managing part quantities
+  const getPartQuantity = (partId: string): number => {
+    const parts = vehicleForm.getValues("selectedParts") || [];
+    const part = parts.find(p => p.partId === partId);
+    return part?.quantity || 0;
+  };
+
+  const updatePartQuantity = (partId: string, quantity: number) => {
+    const currentParts = vehicleForm.getValues("selectedParts") || [];
+    if (quantity <= 0) {
+      // Remove part if quantity is 0 or less
+      vehicleForm.setValue("selectedParts", currentParts.filter(p => p.partId !== partId));
+      removeWarrantyCard(partId);
+    } else {
+      const existingPartIndex = currentParts.findIndex(p => p.partId === partId);
+      if (existingPartIndex >= 0) {
+        // Update existing part quantity
+        const updatedParts = [...currentParts];
+        updatedParts[existingPartIndex] = { partId, quantity };
+        vehicleForm.setValue("selectedParts", updatedParts);
+      } else {
+        // Add new part
+        vehicleForm.setValue("selectedParts", [...currentParts, { partId, quantity }]);
+      }
+    }
+  };
+
+  const incrementPartQuantity = (partId: string) => {
+    const currentQuantity = getPartQuantity(partId);
+    updatePartQuantity(partId, currentQuantity + 1);
+  };
+
+  const decrementPartQuantity = (partId: string) => {
+    const currentQuantity = getPartQuantity(partId);
+    updatePartQuantity(partId, currentQuantity - 1);
+  };
 
   // Fetch compatible products based on selected vehicle brand and model
   const { data: compatibleProducts = [] } = useQuery<any[]>({
@@ -398,12 +439,12 @@ export default function CustomerRegistration() {
       // Reset vehicle form for next vehicle
       vehicleForm.reset({
         vehicleNumber: "",
-        vehicleBrand: "Other",
+        vehicleBrand: "",
         customBrand: "",
-        vehicleModel: "Other",
+        vehicleModel: "",
         customModel: "",
         variant: undefined,
-        color: "Others",
+        color: "",
         customColor: "",
         yearOfPurchase: "",
         vehiclePhoto: "",
@@ -412,9 +453,9 @@ export default function CustomerRegistration() {
         selectedParts: [],
         warrantyCards: [],
       });
-      setSelectedBrand("Other");
-      setSelectedModel("Other");
-      setAvailableModels(getModelsByBrand("Other").map(m => m.name));
+      setSelectedBrand("");
+      setSelectedModel("");
+      setAvailableModels([]);
       setAvailableParts([]);
     },
     onError: (error: any) => {
@@ -1320,8 +1361,7 @@ export default function CustomerRegistration() {
                             <div className="lg:col-span-2">
                               <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto border rounded-lg p-3 bg-muted/20">
                                 {availableParts.map((part) => {
-                                  const selectedPartIds = vehicleForm.watch("selectedParts") || [];
-                                  const isInCart = selectedPartIds.includes(part.id);
+                                  const quantity = getPartQuantity(part.id);
                                   
                                   return (
                                     <Card key={part.id} className="hover-elevate">
@@ -1331,16 +1371,13 @@ export default function CustomerRegistration() {
                                             <p className="text-sm font-medium line-clamp-2">{part.name}</p>
                                             <p className="text-xs text-muted-foreground">{part.category}</p>
                                           </div>
-                                          {!isInCart ? (
+                                          {quantity === 0 ? (
                                             <Button
                                               type="button"
                                               size="sm"
                                               variant="outline"
                                               className="w-full"
-                                              onClick={() => {
-                                                const currentParts = vehicleForm.getValues("selectedParts") || [];
-                                                vehicleForm.setValue("selectedParts", [...currentParts, part.id]);
-                                              }}
+                                              onClick={() => updatePartQuantity(part.id, 1)}
                                               data-testid={`button-add-${part.id}`}
                                             >
                                               Add
@@ -1352,17 +1389,22 @@ export default function CustomerRegistration() {
                                                 size="icon"
                                                 variant="ghost"
                                                 className="h-7 w-7"
-                                                onClick={() => {
-                                                  const currentParts = vehicleForm.getValues("selectedParts") || [];
-                                                  vehicleForm.setValue("selectedParts", currentParts.filter(id => id !== part.id));
-                                                  removeWarrantyCard(part.id);
-                                                }}
-                                                data-testid={`button-remove-${part.id}`}
+                                                onClick={() => decrementPartQuantity(part.id)}
+                                                data-testid={`button-decrement-${part.id}`}
                                               >
                                                 -
                                               </Button>
-                                              <span className="flex-1 text-center text-sm font-semibold">Added</span>
-                                              <div className="w-7"></div>
+                                              <span className="flex-1 text-center text-sm font-semibold" data-testid={`quantity-${part.id}`}>{quantity}</span>
+                                              <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-7 w-7"
+                                                onClick={() => incrementPartQuantity(part.id)}
+                                                data-testid={`button-increment-${part.id}`}
+                                              >
+                                                +
+                                              </Button>
                                             </div>
                                           )}
                                         </div>
@@ -1387,30 +1429,39 @@ export default function CustomerRegistration() {
                                 <CardContent className="p-3">
                                   <div className="max-h-[400px] overflow-y-auto space-y-2">
                                     {vehicleForm.watch("selectedParts")?.length > 0 ? (
-                                      vehicleForm.watch("selectedParts").map((partId) => {
-                                        const part = availableParts.find(p => p.id === partId);
+                                      vehicleForm.watch("selectedParts").map((selectedPart) => {
+                                        const part = availableParts.find(p => p.id === selectedPart.partId);
                                         if (!part) return null;
                                         
                                         return (
-                                          <div key={partId} className="flex items-center gap-2 p-2 border rounded-md bg-background">
+                                          <div key={selectedPart.partId} className="flex items-center gap-2 p-2 border rounded-md bg-background">
                                             <div className="flex-1 min-w-0">
                                               <p className="text-sm font-medium truncate">{part.name}</p>
                                               <p className="text-xs text-muted-foreground">{part.category}</p>
                                             </div>
-                                            <Button
-                                              type="button"
-                                              size="icon"
-                                              variant="ghost"
-                                              className="h-7 w-7 flex-shrink-0"
-                                              onClick={() => {
-                                                const currentParts = vehicleForm.getValues("selectedParts") || [];
-                                                vehicleForm.setValue("selectedParts", currentParts.filter(id => id !== partId));
-                                                removeWarrantyCard(partId);
-                                              }}
-                                              data-testid={`button-cart-remove-${partId}`}
-                                            >
-                                              ×
-                                            </Button>
+                                            <div className="flex items-center gap-1 border rounded-md flex-shrink-0">
+                                              <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6"
+                                                onClick={() => decrementPartQuantity(selectedPart.partId)}
+                                                data-testid={`button-cart-decrement-${selectedPart.partId}`}
+                                              >
+                                                -
+                                              </Button>
+                                              <span className="text-xs font-semibold px-1" data-testid={`cart-quantity-${selectedPart.partId}`}>{selectedPart.quantity}</span>
+                                              <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-6 w-6"
+                                                onClick={() => incrementPartQuantity(selectedPart.partId)}
+                                                data-testid={`button-cart-increment-${selectedPart.partId}`}
+                                              >
+                                                +
+                                              </Button>
+                                            </div>
                                           </div>
                                         );
                                       })
