@@ -50,6 +50,7 @@ export default function Products() {
     brand: "",
     model: "",
     productName: "",
+    productId: "",
     barcode: "",
     barcodeImage: "",
     mrp: "",
@@ -209,6 +210,7 @@ export default function Products() {
       brand: "",
       model: "",
       productName: "",
+      productId: "",
       barcode: "",
       barcodeImage: "",
       mrp: "",
@@ -433,6 +435,7 @@ export default function Products() {
       brand: formData.brand,
       model: formData.model,
       productName: formData.productName,
+      productId: formData.productId || undefined,
       barcode: formData.barcode,
       barcodeImage: formData.barcodeImage,
       mrp,
@@ -461,6 +464,7 @@ export default function Products() {
       brand: product.brand || "",
       model: product.model || "",
       productName: product.productName || "",
+      productId: product.productId || "",
       barcode: product.barcode || "",
       barcodeImage: product.barcodeImage || "",
       mrp: product.mrp?.toString() || "",
@@ -537,6 +541,7 @@ export default function Products() {
         brand: formData.brand,
         model: formData.model,
         productName: formData.productName,
+        productId: formData.productId || undefined,
         barcode: formData.barcode,
         barcodeImage: formData.barcodeImage,
         mrp,
@@ -678,20 +683,32 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="productName">Product Name *</Label>
-        <Input
-          id="productName"
-          value={formData.productName}
-          onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-          required
-          data-testid="input-product-name"
-          placeholder="Enter product name"
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="productName">Product Name *</Label>
+          <Input
+            id="productName"
+            value={formData.productName}
+            onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+            required
+            data-testid="input-product-name"
+            placeholder="Enter product name"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="productId">Product ID (Optional)</Label>
+          <Input
+            id="productId"
+            value={formData.productId}
+            onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+            data-testid="input-product-id"
+            placeholder="e.g., SKU-12345"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="barcode">Barcode/QR Code</Label>
+        <Label htmlFor="barcode">Barcode/QR Code (Optional)</Label>
         <div className="relative">
           <Barcode className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
