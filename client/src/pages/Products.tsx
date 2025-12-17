@@ -1144,7 +1144,7 @@ export default function Products() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
@@ -1155,20 +1155,25 @@ export default function Products() {
             data-testid="input-search"
           />
         </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full sm:w-48" data-testid="select-sort">
-            <SelectValue placeholder="Sort by..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="brand-asc">Brand (A-Z)</SelectItem>
-            <SelectItem value="brand-desc">Brand (Z-A)</SelectItem>
-            <SelectItem value="stock-high">Stock Level (High to Low)</SelectItem>
-            <SelectItem value="stock-low">Stock Level (Low to High)</SelectItem>
-            <SelectItem value="price-high">Price (High to Low)</SelectItem>
-            <SelectItem value="price-low">Price (Low to High)</SelectItem>
-            <SelectItem value="category-asc">Category (A-Z)</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <Label htmlFor="sort-select" className="text-sm text-muted-foreground mb-2 block">Sort By</Label>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger id="sort-select" className="w-full" data-testid="select-sort">
+                <SelectValue placeholder="Select sort option..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="brand-asc">Brand (A-Z)</SelectItem>
+                <SelectItem value="brand-desc">Brand (Z-A)</SelectItem>
+                <SelectItem value="stock-high">Stock Level (High to Low)</SelectItem>
+                <SelectItem value="stock-low">Stock Level (Low to High)</SelectItem>
+                <SelectItem value="price-high">Price (High to Low)</SelectItem>
+                <SelectItem value="price-low">Price (Low to High)</SelectItem>
+                <SelectItem value="category-asc">Category (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {filteredProducts.length > 0 ? (
