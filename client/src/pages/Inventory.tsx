@@ -24,6 +24,7 @@ import { format } from "date-fns";
 
 export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("brand-asc");
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -250,6 +251,29 @@ export default function Inventory() {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const getSortedProducts = (productsToSort: any[]) => {
+    return productsToSort.sort((a: any, b: any) => {
+      switch (sortBy) {
+        case "brand-asc":
+          return a.brand.localeCompare(b.brand);
+        case "brand-desc":
+          return b.brand.localeCompare(a.brand);
+        case "stock-high":
+          return (b.stockQty || 0) - (a.stockQty || 0);
+        case "stock-low":
+          return (a.stockQty || 0) - (b.stockQty || 0);
+        case "price-high":
+          return (b.sellingPrice || 0) - (a.sellingPrice || 0);
+        case "price-low":
+          return (a.sellingPrice || 0) - (b.sellingPrice || 0);
+        case "category-asc":
+          return (a.category || "").localeCompare(b.category || "");
+        default:
+          return 0;
+      }
+    });
   };
 
   const getTransactionBadge = (type: string) => {
@@ -651,6 +675,25 @@ export default function Inventory() {
         </div>
 
         <TabsContent value="products" className="space-y-4">
+          <div className="flex gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <Label htmlFor="sort-select" className="text-sm text-muted-foreground mb-2 block">Sort By</Label>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger id="sort-select" className="w-full" data-testid="select-sort-inventory">
+                  <SelectValue placeholder="Select sort option..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="brand-asc">Brand (A-Z)</SelectItem>
+                  <SelectItem value="brand-desc">Brand (Z-A)</SelectItem>
+                  <SelectItem value="stock-high">Stock Level (High to Low)</SelectItem>
+                  <SelectItem value="stock-low">Stock Level (Low to High)</SelectItem>
+                  <SelectItem value="price-high">Price (High to Low)</SelectItem>
+                  <SelectItem value="price-low">Price (Low to High)</SelectItem>
+                  <SelectItem value="category-asc">Category (A-Z)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -660,7 +703,7 @@ export default function Inventory() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {products.map((product: any) => (
+                {getSortedProducts(products).map((product: any) => (
                   <Card key={product._id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`card-product-${product._id}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
