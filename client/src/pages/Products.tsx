@@ -1212,6 +1212,11 @@ export default function Products() {
                           {product.barcode}
                         </p>
                       )}
+                      {product.productId && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ID: {product.productId}
+                        </p>
+                      )}
                     </div>
                     <Package className="h-5 w-5 text-muted-foreground" />
                   </div>
