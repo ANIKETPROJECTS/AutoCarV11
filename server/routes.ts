@@ -1903,6 +1903,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/inventory-transactions/:id", requireAuth, requirePermission('inventory', 'delete'), async (req, res) => {
+    try {
+      const transaction = await InventoryTransaction.findById(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ error: "Transaction not found" });
+      }
+
+      const product = await Product.findById(transaction.productId);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      // Revert the stock quantity change
+      const multiplier = transaction.type === 'IN' || transaction.type === 'RETURN' ? -1 : 1;
+      const reversedStock = transaction.type === 'ADJUSTMENT' 
+        ? transaction.previousStock 
+        : product.stockQty + (multiplier * transaction.quantity);
+
+      await Product.findByIdAndUpdate(
+        transaction.productId,
+        { stockQty: reversedStock },
+        { new: true }
+      );
+
+      // Delete the transaction
+      await InventoryTransaction.findByIdAndDelete(req.params.id);
+
+      res.json({ success: true, message: "Transaction deleted successfully" });
+    } catch (error) {
+      res.status(400).json({ error: "Failed to delete transaction" });
+    }
+  });
+
   // Low stock alerts
   app.get("/api/products/low-stock", requireAuth, requirePermission('products', 'read'), async (req, res) => {
     try {

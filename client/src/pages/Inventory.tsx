@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/DataTable";
-import { Plus, Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Package, Undo2, Barcode } from "lucide-react";
+import { Plus, Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Package, Undo2, Barcode, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,6 +33,8 @@ export default function Inventory() {
   const [isTransactionDetailOpen, setIsTransactionDetailOpen] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [returnProductSearchTerm, setReturnProductSearchTerm] = useState("");
+  const [transactionToDelete, setTransactionToDelete] = useState<any>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const [transactionFormData, setTransactionFormData] = useState({
@@ -160,6 +163,31 @@ export default function Inventory() {
       toast({
         title: "Error",
         description: error.message || "Failed to process return",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest('DELETE', `/api/inventory-transactions/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/low-stock'] });
+      setIsDeleteDialogOpen(false);
+      setTransactionToDelete(null);
+      toast({
+        title: "Success",
+        description: "Transaction deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete transaction",
         variant: "destructive",
       });
     },
@@ -828,6 +856,23 @@ export default function Inventory() {
                 header: "Date", 
                 accessor: (row) => format(new Date(row.createdAt || row.date), 'MMM dd, yyyy'),
               },
+              {
+                header: "Action",
+                accessor: (row) => (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTransactionToDelete(row);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    data-testid={`button-delete-transaction-${row._id}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                ),
+              },
             ]}
             data={filteredTransactions}
             onRowClick={(row) => {
@@ -1126,6 +1171,31 @@ export default function Inventory() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (transactionToDelete?._id) {
+                  deleteTransactionMutation.mutate(transactionToDelete._id);
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600"
+              data-testid="button-confirm-delete-transaction"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
