@@ -453,7 +453,8 @@ export function InvoiceGenerationDialog({ open, onOpenChange, serviceVisit }: In
                                         onValueChange={(productId) => {
                                           const selectedProduct = products.find((p: any) => p._id === productId);
                                           if (selectedProduct) {
-                                            field.onChange(selectedProduct.name);
+                                            const displayName = selectedProduct.productName || selectedProduct.name || selectedProduct.model || "Unknown";
+                                            field.onChange(displayName);
                                             form.setValue(`items.${index}.productId`, selectedProduct._id);
                                             form.setValue(`items.${index}.unitPrice`, selectedProduct.sellingPrice);
                                             updateItemTotal(index);
@@ -468,7 +469,7 @@ export function InvoiceGenerationDialog({ open, onOpenChange, serviceVisit }: In
                                         <SelectContent>
                                           {products.filter((p: any) => p.stockQty > 0).map((product: any) => (
                                             <SelectItem key={product._id} value={product._id}>
-                                              {product.name} - ₹{product.sellingPrice} ({product.stockQty} in stock)
+                                              {product.productName || product.name || product.model || "Unknown"} - ₹{product.sellingPrice} ({product.stockQty} in stock)
                                             </SelectItem>
                                           ))}
                                           {products.filter((p: any) => p.stockQty > 0).length === 0 && (
@@ -650,7 +651,8 @@ export function InvoiceGenerationDialog({ open, onOpenChange, serviceVisit }: In
                                   onValueChange={(productId) => {
                                     const selectedProduct = products.find((p: any) => p._id === productId);
                                     if (selectedProduct) {
-                                      field.onChange(selectedProduct.name);
+                                      const displayName = selectedProduct.productName || selectedProduct.name || selectedProduct.model || "Unknown";
+                                      field.onChange(displayName);
                                       form.setValue(`items.${index}.productId`, selectedProduct._id);
                                       form.setValue(`items.${index}.unitPrice`, selectedProduct.sellingPrice);
                                       updateItemTotal(index);
@@ -665,7 +667,7 @@ export function InvoiceGenerationDialog({ open, onOpenChange, serviceVisit }: In
                                   <SelectContent>
                                     {products.filter((p: any) => p.stockQty > 0).map((product: any) => (
                                       <SelectItem key={product._id} value={product._id}>
-                                        {product.name} - ₹{product.sellingPrice}
+                                        {product.productName || product.name || product.model || "Unknown"} - ₹{product.sellingPrice}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
