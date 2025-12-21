@@ -1911,23 +1911,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const product = await Product.findById(transaction.productId);
-      if (!product) {
-        return res.status(404).json({ error: "Product not found" });
+      
+      // Revert stock if product exists
+      if (product) {
+        const multiplier = transaction.type === 'IN' || transaction.type === 'RETURN' ? -1 : 1;
+        const reversedStock = transaction.type === 'ADJUSTMENT' 
+          ? transaction.previousStock 
+          : product.stockQty + (multiplier * transaction.quantity);
+
+        await Product.findByIdAndUpdate(
+          transaction.productId,
+          { stockQty: reversedStock },
+          { new: true }
+        );
       }
 
-      // Revert the stock quantity change
-      const multiplier = transaction.type === 'IN' || transaction.type === 'RETURN' ? -1 : 1;
-      const reversedStock = transaction.type === 'ADJUSTMENT' 
-        ? transaction.previousStock 
-        : product.stockQty + (multiplier * transaction.quantity);
-
-      await Product.findByIdAndUpdate(
-        transaction.productId,
-        { stockQty: reversedStock },
-        { new: true }
-      );
-
-      // Delete the transaction
+      // Delete the transaction regardless of whether product exists
       await InventoryTransaction.findByIdAndDelete(req.params.id);
 
       res.json({ success: true, message: "Transaction deleted successfully" });
